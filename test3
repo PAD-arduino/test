@@ -1,0 +1,67 @@
+/*
+   INA260表示
+　EEPROM書き込みスケッチ引用元 https://miraluna.hatenablog.com/entry/eeprom
+　INA260.h詳細　https://github.com/codebrainz/ina260/blob/master/src/INA260.h
+*/
+#include <INA260.h>
+#include<Wire.h>
+
+#define NELEMS(arg) (sizeof(arg) / sizeof((arg)[0]))
+
+const int   INA226_ADDR         = 0x40;                 // INA226 I2C Address (A0=A1=GND)
+const int   ROM_ADDR         = 0x50;                 // INA226 I2C Address (A0=A1=GND)
+const word  INA226_CAL_VALUE    = 0x0A00;               // INA226 Calibration Register Value
+
+void eep_write(int device_add, unsigned int eep_add, int data){
+Wire.beginTransmission(device_add);//指定したデバイスへ移動
+Wire.write((int)(eep_add >> 8));
+Wire.write((int)(eep_add & 0xff));
+Wire.write(data);
+Wire.endTransmission();
+}
+
+// define the INA260 instance, giving the I2C address (4-bits), in this case 0
+static INA260 ina260(0);
+// alternatively you can use two constants representing how the address pins
+// on the device are wired (see "Serial Bus Address" in the datasheet).
+//static INA260 ina260(INA260::ADDR_GND, INA260::ADDR_GND);
+
+void setup() {
+  // for this demo, the readings will be printed over serial, so the Serial
+  // library is initialized here.
+  Serial.begin(9600);
+
+  // Call the begin() function to initialize the instance. This will also
+  // initialize the Wire/I2C library.
+  ina260.begin();
+}
+
+void loop() {
+  
+Wire.begin();
+
+double value = 0.0;
+
+ ina260.readBusVoltageRegisterInVolts(value);
+
+int V = value * 100;
+
+static word adrs=0;
+
+eep_write(0x50,adrs,V);
+delay(5);//書込み待ち
+
+
+adrs+=1;//そのままだとカウントアップされず同じアドレスに上書きされると思ったのでつけました
+
+ina260.readCurrentRegisterInAmps(value);
+
+int A = value * 100;
+
+eep_write(0x50,adrs,A);
+delay(5);//書込み待ち
+
+adrs+=1;//そのままだとカウントアップされず同じアドレスに上書きされると思ったのでつけました
+
+  delay(1000);
+}
